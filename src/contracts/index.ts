@@ -1,6 +1,16 @@
-export const SWAP_CONTRACT_ADDRESS = '0x96E535efdbFf3c35feb64AC95190762b1cb72cc3';
-export const USDC_ADDRESS = '0x3600000000000000000000000000000000000001';
+// Official Arc Testnet contract addresses
+// Source: https://docs.arc.network/arc/references/contract-addresses
+
+// Stablecoins
+export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
 export const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+
+// StableFX (USDC <-> EURC swap)
+// Source: https://docs.arc.network/arc/references/contract-addresses#stablefx
+export const STABLEFX_ADDRESS = '0x867650F5eAe8df91445971f14d89fd84F0C9a9f8';
+
+// Legacy alias
+export const SWAP_CONTRACT_ADDRESS = STABLEFX_ADDRESS;
 
 export const SWAP_ABI = [
   {
@@ -36,5 +46,15 @@ export const ERC20_ABI = [
     stateMutability: 'view',
     inputs: [],
     outputs: [{ name: '', type: 'uint8' }],
+  },
+  {
+    name: 'transfer',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
   },
 ] as const;
