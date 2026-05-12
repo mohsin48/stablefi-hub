@@ -1,0 +1,14 @@
+{
+  "name": "StableFi Hub",
+  "description": "A stablecoin-first DeFi platform on Arc Network featuring swaps, lending, borrowing, and instant FX payments.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "Stablecoin Swaps",
+    "Lending & Borrowing",
+    "FX Payments",
+    "AI Risk Engine"
+  ]
+}
