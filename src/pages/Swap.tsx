@@ -46,7 +46,8 @@ export function Swap() {
   }, [isSwapSuccess]);
 
   const onSwapClick = async () => {
-    await handleSwap(amount);
+    const direction = fromToken === 'USDC' ? 'USDC_TO_EURC' : 'EURC_TO_USDC';
+    await handleSwap(amount, direction as 'USDC_TO_EURC' | 'EURC_TO_USDC');
   };
 
   const exchangeRate = fromToken === 'USDC' && toToken === 'EURC' ? 0.92 : 1.08;
