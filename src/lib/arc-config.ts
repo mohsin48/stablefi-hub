@@ -1,19 +1,6 @@
 import { http, createConfig } from 'wagmi';
-import { mainnet, sepolia } from 'wagmi/chains';
 
-// Custom Arc Network Definition
-export const arcNetwork = {
-  id: 490424,
-  name: 'Arc Network',
-  nativeCurrency: { name: 'Arc', symbol: 'ARC', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://mainnet.arc.network'] },
-  },
-  blockExplorers: {
-    default: { name: 'ArcScan', url: 'https://arcscan.app' },
-  },
-} as const;
-
+// Arc Testnet Only (Chain ID: 5042002)
 export const arcTestnet = {
   id: 5042002,
   name: 'Arc Testnet',
@@ -25,15 +12,15 @@ export const arcTestnet = {
     default: { name: 'ArcScan', url: 'https://testnet.arcscan.app/' },
   },
   contracts: {
-    // Contract addresses would go here in production
+    usdc: { address: '0x3600000000000000000000000000000000000001' },
+    eurc: { address: '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a' },
   },
   testnet: true,
 } as const;
 
 export const config = createConfig({
-  chains: [mainnet, arcTestnet],
+  chains: [arcTestnet],
   transports: {
-    [mainnet.id]: http(),
     [arcTestnet.id]: http(),
   },
 });
