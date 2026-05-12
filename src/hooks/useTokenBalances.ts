@@ -1,15 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-import { Contract, formatUnits, JsonRpcProvider } from 'ethers';
+import { JsonRpcProvider, Contract, formatUnits } from 'ethers';
 import { USDC_ADDRESS, EURC_ADDRESS, ERC20_ABI } from '../contracts';
-import { useEthersSigner } from './useSwap';
 
-// Direct provider for Arc Testnet — used as fallback for read-only balance calls
+// Arc Testnet direct RPC provider for reading on-chain data
 const ARC_TESTNET_RPC = 'https://rpc.testnet.arc.network/';
-const arcProvider = new JsonRpcProvider(ARC_TESTNET_RPC, {
-  chainId: 5042002,
-  name: 'Arc Testnet',
-});
 
 export interface TokenBalance {
   symbol: string;
@@ -20,7 +15,6 @@ export interface TokenBalance {
 
 export function useTokenBalances() {
   const { address, isConnected } = useAccount();
-  const signer = useEthersSigner();
   const [balances, setBalances] = useState<Record<string, TokenBalance>>({
     USDC: { symbol: 'USDC', balance: '0.00', address: USDC_ADDRESS, decimals: 6 },
     EURC: { symbol: 'EURC', balance: '0.00', address: EURC_ADDRESS, decimals: 6 },
@@ -32,46 +26,55 @@ export function useTokenBalances() {
 
     setIsLoading(true);
     try {
-      // Use signer if available (wallet connected), otherwise use direct RPC provider
-      const provider = signer || arcProvider;
+      // Create a fresh provider each time to avoid stale connections
+      const provider = new JsonRpcProvider(ARC_TESTNET_RPC, {
+        chainId: 5042002,
+        name: 'Arc Testnet',
+      });
 
       const usdcContract = new Contract(USDC_ADDRESS, ERC20_ABI, provider);
       const eurcContract = new Contract(EURC_ADDRESS, ERC20_ABI, provider);
 
-      const [usdcBal, eurcBal] = await Promise.all([
-        usdcContract.balanceOf(address),
-        eurcContract.balanceOf(address),
+      // Fetch both balances in parallel using balanceOf(address)
+      const [usdcRaw, eurcRaw] = await Promise.all([
+        usdcContract.balanceOf(address) as Promise<bigint>,
+        eurcContract.balanceOf(address) as Promise<bigint>,
       ]);
 
-      // Both USDC and EURC use 6 decimals on Arc Testnet
-      const usdcFormatted = formatUnits(usdcBal, 6);
-      const eurcFormatted = formatUnits(eurcBal, 6);
+      // Format with 6 decimals (both USDC and EURC use 6 decimals on Arc Testnet)
+      const usdcBalance = formatUnits(usdcRaw, 6);
+      const eurcBalance = formatUnits(eurcRaw, 6);
+
+      console.log(`[Arc Testnet] USDC balance for ${address}: ${usdcBalance}`);
+      console.log(`[Arc Testnet] EURC balance for ${address}: ${eurcBalance}`);
 
       setBalances({
-        USDC: { 
-          symbol: 'USDC', 
-          balance: usdcFormatted, 
+        USDC: {
+          symbol: 'USDC',
+          balance: usdcBalance,
           address: USDC_ADDRESS,
           decimals: 6,
         },
-        EURC: { 
-          symbol: 'EURC', 
-          balance: eurcFormatted, 
+        EURC: {
+          symbol: 'EURC',
+          balance: eurcBalance,
           address: EURC_ADDRESS,
           decimals: 6,
         },
       });
     } catch (error) {
-      console.error('Error fetching balances from Arc Testnet:', error);
+      console.error('[Arc Testnet] Error fetching token balances:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [signer, address]);
+  }, [address]);
 
   useEffect(() => {
     if (isConnected && address) {
+      // Fetch immediately on connect
       fetchBalances();
-      const interval = setInterval(fetchBalances, 10000); // Poll every 10s
+      // Then poll every 10 seconds
+      const interval = setInterval(fetchBalances, 10000);
       return () => clearInterval(interval);
     }
   }, [isConnected, address, fetchBalances]);
