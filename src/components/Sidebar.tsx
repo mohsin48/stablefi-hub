@@ -77,7 +77,7 @@ export function Sidebar() {
           <div className="text-[10px] text-[#666] uppercase italic font-mono mb-1">Network Status</div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[11px] font-mono">Arc Mainnet (Active)</span>
+            <span className="text-[11px] font-mono">Arc Testnet (Active)</span>
           </div>
         </div>
       </div>
