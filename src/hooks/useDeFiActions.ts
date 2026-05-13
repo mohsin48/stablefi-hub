@@ -1,11 +1,9 @@
 import { 
   useWriteContract, 
   useWaitForTransactionReceipt, 
-  useSimulateContract 
 } from 'wagmi';
-import { parseUnits } from 'viem';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // Common ERC20 ABI for simulation
 const ERC20_ABI = [
@@ -21,12 +19,16 @@ export function useDeFiActions() {
   } = useWriteContract();
 
   const { 
-    isLoading: isPending, 
-    isSuccess, 
+    isLoading: isTxPending, 
+    isSuccess: isTxSuccess, 
     error: txError 
   } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Mock states for simulation
+  const [isMockPending, setIsMockPending] = useState(false);
+  const [isMockSuccess, setIsMockSuccess] = useState(false);
 
   useEffect(() => {
     if (writeError) {
@@ -35,37 +37,38 @@ export function useDeFiActions() {
     if (txError) {
       toast.error('Transaction Error', { description: txError.message });
     }
-    if (isSuccess) {
+    if (isTxSuccess) {
       toast.success('Transaction Successful', { 
         description: 'Your DeFi action has been settled on Arc.' 
       });
     }
-  }, [writeError, txError, isSuccess]);
+  }, [writeError, txError, isTxSuccess]);
 
   const executeAction = async (label: string) => {
+    setIsMockPending(true);
+    setIsMockSuccess(false);
     toast.info(`Preparing ${label}`, { description: 'Please confirm in your wallet.' });
     
     // In a real dApp, we would call the specific contract function.
     // Since we don't have contracts deployed, we simulate the "intent"
     // and provide feedback. For now, we'll use a placeholder write if addresses existed.
     
-    /* 
-    writeContract({
-      address: CONTRACT_ADDRESS,
-      abi: DeFi_ABI,
-      functionName: 'swap',
-      args: [...],
-    });
-    */
-    
     // FOR DEMO: Transition to a "pending" state visually
-    return new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    setIsMockPending(false);
+    setIsMockSuccess(true);
+    toast.success('Transaction Successful', { 
+      description: `${label} has been settled on Arc Testnet.` 
+    });
+    
+    return true;
   };
 
   return {
     isConfirming,
-    isPending,
-    isSuccess,
+    isPending: isTxPending || isMockPending,
+    isSuccess: isTxSuccess || isMockSuccess,
     hash,
     executeAction
   };

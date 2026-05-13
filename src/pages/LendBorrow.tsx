@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Minus, 
@@ -10,7 +10,8 @@ import {
   Lock,
   TrendingDown,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,10 +50,24 @@ export function LendBorrow() {
   const { executeAction, isPending: isTxPending } = useDeFiActions();
   const [activeTab, setActiveTab] = useState('lend');
 
-  // Local state to track simulated positions
+  // Local state to track simulated positions, initialized from localStorage
   const [suppliedBalances, setSuppliedBalances] = useState<Record<string, number>>({ USDC: 0, EURC: 0 });
   const [borrowedBalances, setBorrowedBalances] = useState<Record<string, number>>({ USDC: 0, EURC: 0 });
   
+  useEffect(() => {
+    const storedSupply = localStorage.getItem('mockSuppliedBalances');
+    const storedBorrow = localStorage.getItem('mockBorrowedBalances');
+    if (storedSupply) setSuppliedBalances(JSON.parse(storedSupply));
+    if (storedBorrow) setBorrowedBalances(JSON.parse(storedBorrow));
+  }, []);
+
+  const saveState = (newSupply: Record<string, number>, newBorrow: Record<string, number>) => {
+    setSuppliedBalances(newSupply);
+    setBorrowedBalances(newBorrow);
+    localStorage.setItem('mockSuppliedBalances', JSON.stringify(newSupply));
+    localStorage.setItem('mockBorrowedBalances', JSON.stringify(newBorrow));
+  };
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState<'Deposit' | 'Borrow' | null>(null);
@@ -69,21 +84,28 @@ export function LendBorrow() {
   const handleAction = async () => {
     if (!amountInput || isNaN(Number(amountInput)) || Number(amountInput) <= 0) return;
     
-    setIsModalOpen(false);
     await executeAction(`${modalAction} ${modalAsset}`);
     
     const val = Number(amountInput);
+    let newSupply = { ...suppliedBalances };
+    let newBorrow = { ...borrowedBalances };
+
     if (modalAction === 'Deposit') {
-      setSuppliedBalances(prev => ({ ...prev, [modalAsset]: prev[modalAsset] + val }));
+      newSupply[modalAsset] += val;
     } else if (modalAction === 'Borrow') {
-      setBorrowedBalances(prev => ({ ...prev, [modalAsset]: prev[modalAsset] + val }));
+      newBorrow[modalAsset] += val;
     }
+    
+    saveState(newSupply, newBorrow);
     setAmountInput('');
+    setIsModalOpen(false); // Close modal only after completion
   };
 
   const handleQuickDeposit = async () => {
     await executeAction('Auto-Deposit USDC');
-    setSuppliedBalances(prev => ({ ...prev, USDC: prev.USDC + 100 }));
+    let newSupply = { ...suppliedBalances };
+    newSupply.USDC += 100;
+    saveState(newSupply, borrowedBalances);
   };
 
   const lendAssets = [
@@ -209,8 +231,12 @@ export function LendBorrow() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 relative z-10">
-                    <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-widest h-10" onClick={handleQuickDeposit}>
-                      Quick Deposit $100 USDC
+                    <Button 
+                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-widest h-10" 
+                      onClick={handleQuickDeposit}
+                      disabled={isTxPending}
+                    >
+                      {isTxPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Quick Deposit $100 USDC'}
                     </Button>
                     <p className="text-[9px] font-mono text-[#666] text-center uppercase">Fixed Arc Gas Fee applies</p>
                   </CardContent>
@@ -307,7 +333,9 @@ export function LendBorrow() {
         )}
 
         {/* Interaction Modal */}
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Dialog open={isModalOpen} onOpenChange={(open) => {
+          if (!isTxPending) setIsModalOpen(open);
+        }}>
           <DialogContent className="bg-[#1a1a1a] border-[#333] text-white">
             <DialogHeader>
               <DialogTitle className="font-mono uppercase tracking-widest">{modalAction} {modalAsset}</DialogTitle>
@@ -324,6 +352,7 @@ export function LendBorrow() {
                 value={amountInput}
                 onChange={(e) => setAmountInput(e.target.value)}
                 className="bg-[#222] border-[#333] font-mono text-lg"
+                disabled={isTxPending}
               />
               {modalAction === 'Borrow' && (
                 <p className="text-[10px] text-[#666] font-mono mt-2 text-right">Max borrow limit: ${(borrowLimit - totalBorrowed).toFixed(2)}</p>
@@ -334,15 +363,17 @@ export function LendBorrow() {
                 variant="outline" 
                 className="border-[#333] hover:bg-[#333]"
                 onClick={() => setIsModalOpen(false)}
+                disabled={isTxPending}
               >
                 Cancel
               </Button>
               <Button 
-                className={modalAction === 'Deposit' ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-red-600 hover:bg-red-500'}
+                className={modalAction === 'Deposit' ? 'bg-indigo-600 hover:bg-indigo-500 flex gap-2' : 'bg-red-600 hover:bg-red-500 flex gap-2'}
                 onClick={handleAction}
                 disabled={!amountInput || isTxPending}
               >
-                Confirm {modalAction}
+                {isTxPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isTxPending ? 'Processing...' : `Confirm ${modalAction}`}
               </Button>
             </DialogFooter>
           </DialogContent>
