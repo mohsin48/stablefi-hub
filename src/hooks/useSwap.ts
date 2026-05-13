@@ -27,37 +27,8 @@ export function useEthersSigner() {
   }, [client]);
 }
 
-// StableFX ABI — the official Arc Testnet swap contract
-// Source: https://docs.arc.network/arc/references/contract-addresses#stablefx
-// Contract: 0x867650F5eAe8df91445971f14d89fd84F0C9a9f8
-const STABLEFX_ABI = [
-  // swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 minAmountOut, address recipient)
-  {
-    name: 'swap',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'tokenIn', type: 'address' },
-      { name: 'tokenOut', type: 'address' },
-      { name: 'amountIn', type: 'uint256' },
-      { name: 'minAmountOut', type: 'uint256' },
-      { name: 'recipient', type: 'address' },
-    ],
-    outputs: [{ name: 'amountOut', type: 'uint256' }],
-  },
-  // getAmountOut(address tokenIn, address tokenOut, uint256 amountIn)
-  {
-    name: 'getAmountOut',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'tokenIn', type: 'address' },
-      { name: 'tokenOut', type: 'address' },
-      { name: 'amountIn', type: 'uint256' },
-    ],
-    outputs: [{ name: 'amountOut', type: 'uint256' }],
-  },
-] as const;
+// Uniswap V2 Router ABI
+import { SWAP_ABI, ROUTER_ADDRESS } from '../contracts';
 
 export function useSwap() {
   const signer = useEthersSigner();
@@ -91,7 +62,7 @@ export function useSwap() {
       const parsedAmount = parseUnits(amount, 6); // Both USDC and EURC use 6 decimals
       
       const tokenContract = new Contract(tokenIn, ERC20_ABI, signer);
-      const stableFxContract = new Contract(STABLEFX_ADDRESS, STABLEFX_ABI, signer);
+      const routerContract = new Contract(ROUTER_ADDRESS, SWAP_ABI, signer);
 
       // Step 1: Check balance
       const balance = await tokenContract.balanceOf(address);
@@ -103,53 +74,75 @@ export function useSwap() {
         return;
       }
 
-      // Step 2: Approve StableFX contract to spend tokens
+      // Step 2: Approve Router contract to spend tokens
       toast.info(`Step 1/2: Approving ${tokenInSymbol}`, { 
-        description: `Allowing StableFX to spend your ${tokenInSymbol}...` 
+        description: `Allowing Swap Router to spend your ${tokenInSymbol}...` 
       });
       
-      const approveTx = await tokenContract.approve(STABLEFX_ADDRESS, parsedAmount);
+      const approveTx = await tokenContract.approve(ROUTER_ADDRESS, parsedAmount);
       toast.info('Approval Pending', { description: 'Waiting for confirmation on Arc Testnet...' });
       await approveTx.wait();
       toast.success('Approval Confirmed ✓');
 
-      // Step 3: Execute swap via StableFX
+      // Step 3: Execute swap via Router
+      // Get expected output amount
+      let expectedAmountOut = 0n;
+      const path = [tokenIn, tokenOut];
+      try {
+        const amountsOut = await routerContract.getAmountsOut(parsedAmount, path);
+        expectedAmountOut = amountsOut[1];
+      } catch (err: any) {
+        console.error('getAmountsOut error:', err);
+        // Provide a clearer error if liquidity does not exist
+        if (err?.message?.includes('missing revert data')) {
+           toast.error('Insufficient Liquidity', { description: 'The liquidity pool for this pair does not exist or lacks liquidity on the testnet router.' });
+           setIsSwapping(false);
+           return;
+        }
+      }
+
       // Apply 0.5% slippage tolerance
       const slippageBps = 50n; // 0.5%
-      const minAmountOut = parsedAmount - (parsedAmount * slippageBps / 10000n);
+      let minAmountOut = 0n;
+      if (expectedAmountOut > 0n) {
+          minAmountOut = expectedAmountOut - (expectedAmountOut * slippageBps / 10000n);
+      } else {
+          // Fallback if getAmountsOut failed but we want to simulate anyway (e.g. 1:1)
+          minAmountOut = parsedAmount - (parsedAmount * slippageBps / 10000n);
+      }
+
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
       toast.info(`Step 2/2: Swapping ${tokenInSymbol} → ${tokenOutSymbol}`, { 
-        description: 'Executing swap on Arc Testnet StableFX...' 
+        description: 'Executing swap on Arc Testnet Router...' 
       });
       
       let swapTx;
       try {
-        // Try the StableFX swap function
-        swapTx = await stableFxContract.swap(
-          tokenIn,
-          tokenOut,
+        // Try the Uniswap V2 router swapExactTokensForTokens function
+        swapTx = await routerContract.swapExactTokensForTokens(
           parsedAmount,
           minAmountOut,
-          address
+          path,
+          address,
+          deadline
         );
       } catch (swapError: any) {
-        // If StableFX swap fails, fall back to direct ERC20 transfer simulation
-        // This handles cases where StableFX might have a different interface
-        console.error('StableFX swap call failed:', swapError);
+        console.error('Swap call failed:', swapError);
         
         // Provide a user-friendly error
         const reason = swapError?.reason || swapError?.message || '';
-        if (reason.includes('insufficient')) {
-          toast.error('Insufficient Liquidity', { 
-            description: 'The StableFX pool may not have enough liquidity for this swap amount.' 
-          });
-        } else if (reason.includes('slippage') || reason.includes('min')) {
+        if (reason.includes('INSUFFICIENT_OUTPUT_AMOUNT')) {
           toast.error('Slippage Too High', { 
             description: 'Price moved beyond the slippage tolerance. Try a smaller amount.' 
           });
+        } else if (reason.includes('INSUFFICIENT_LIQUIDITY')) {
+          toast.error('Insufficient Liquidity', { 
+            description: 'The pool does not have enough liquidity for this swap amount.' 
+          });
         } else {
           toast.error('Swap Failed', { 
-            description: `StableFX contract reverted. The pool may not support this pair yet. Error: ${reason.substring(0, 100)}` 
+            description: `Router contract reverted. The pool may not support this pair yet. Error: ${reason.substring(0, 100)}` 
           });
         }
         setIsSwapping(false);
@@ -180,7 +173,7 @@ export function useSwap() {
       } else if (error.code === 'INSUFFICIENT_FUNDS') {
         message = 'Insufficient USDC for gas fees. Get testnet USDC from faucet.circle.com';
       } else if (error.message?.includes('missing revert data')) {
-        message = 'Contract call reverted. The StableFX contract may not support this function signature.';
+        message = 'Contract call reverted. The Router contract may not support this swap path.';
       } else if (error.reason) {
         message = error.reason;
       } else if (error.message) {

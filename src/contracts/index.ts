@@ -5,20 +5,32 @@
 export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
 export const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
 
-// StableFX (USDC <-> EURC swap)
-// Source: https://docs.arc.network/arc/references/contract-addresses#stablefx
-export const STABLEFX_ADDRESS = '0x867650F5eAe8df91445971f14d89fd84F0C9a9f8';
-
-// Legacy alias
-export const SWAP_CONTRACT_ADDRESS = STABLEFX_ADDRESS;
+// Uniswap V2 Router (ApexiSwap Router on Arc Testnet)
+export const ROUTER_ADDRESS = '0x437b1aBf6e5a69548849b15EC35f83A73Fa1E28F';
 
 export const SWAP_ABI = [
   {
-    name: 'swapUSDCForEURC',
+    name: 'swapExactTokensForTokens',
     type: 'function',
     stateMutability: 'nonpayable',
-    inputs: [{ name: 'amount', type: 'uint256' }],
-    outputs: [],
+    inputs: [
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'amountOutMin', type: 'uint256' },
+      { name: 'path', type: 'address[]' },
+      { name: 'to', type: 'address' },
+      { name: 'deadline', type: 'uint256' },
+    ],
+    outputs: [{ name: 'amounts', type: 'uint256[]' }],
+  },
+  {
+    name: 'getAmountsOut',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'path', type: 'address[]' },
+    ],
+    outputs: [{ name: 'amounts', type: 'uint256[]' }],
   },
 ] as const;
 
