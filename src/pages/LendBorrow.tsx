@@ -25,6 +25,15 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { PageWrapper } from '@/src/components/PageWrapper';
@@ -40,8 +49,41 @@ export function LendBorrow() {
   const { executeAction, isPending: isTxPending } = useDeFiActions();
   const [activeTab, setActiveTab] = useState('lend');
 
-  const handleAction = async (action: string, asset: string) => {
-    await executeAction(`${action} ${asset}`);
+  // Local state to track simulated positions
+  const [suppliedBalances, setSuppliedBalances] = useState<Record<string, number>>({ USDC: 0, EURC: 0 });
+  const [borrowedBalances, setBorrowedBalances] = useState<Record<string, number>>({ USDC: 0, EURC: 0 });
+  
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalAction, setModalAction] = useState<'Deposit' | 'Borrow' | null>(null);
+  const [modalAsset, setModalAsset] = useState<string>('USDC');
+  const [amountInput, setAmountInput] = useState('');
+
+  const openModal = (action: 'Deposit' | 'Borrow', asset: string) => {
+    setModalAction(action);
+    setModalAsset(asset);
+    setAmountInput('');
+    setIsModalOpen(true);
+  };
+
+  const handleAction = async () => {
+    if (!amountInput || isNaN(Number(amountInput)) || Number(amountInput) <= 0) return;
+    
+    setIsModalOpen(false);
+    await executeAction(`${modalAction} ${modalAsset}`);
+    
+    const val = Number(amountInput);
+    if (modalAction === 'Deposit') {
+      setSuppliedBalances(prev => ({ ...prev, [modalAsset]: prev[modalAsset] + val }));
+    } else if (modalAction === 'Borrow') {
+      setBorrowedBalances(prev => ({ ...prev, [modalAsset]: prev[modalAsset] + val }));
+    }
+    setAmountInput('');
+  };
+
+  const handleQuickDeposit = async () => {
+    await executeAction('Auto-Deposit USDC');
+    setSuppliedBalances(prev => ({ ...prev, USDC: prev.USDC + 100 }));
   };
 
   const lendAssets = [
@@ -53,6 +95,12 @@ export function LendBorrow() {
     { asset: 'USDC', apy: '5.2%', liquidity: '$420k' },
     { asset: 'EURC', apy: '4.8%', liquidity: '$120k' },
   ];
+
+  // Derived metrics
+  const totalSupplied = suppliedBalances.USDC + suppliedBalances.EURC;
+  const borrowLimit = totalSupplied * 0.8; // 80% LTV
+  const totalBorrowed = borrowedBalances.USDC + borrowedBalances.EURC;
+  const canBorrow = totalSupplied > 0;
 
   return (
     <PageWrapper>
@@ -91,11 +139,11 @@ export function LendBorrow() {
               <div className="flex gap-4">
                 <div className="text-right">
                   <div className="text-[10px] font-mono text-[#666] uppercase">Supply Balance</div>
-                  <div className="text-lg font-bold font-mono text-indigo-400">$0.00</div>
+                  <div className="text-lg font-bold font-mono text-indigo-400">${totalSupplied.toFixed(2)}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] font-mono text-[#666] uppercase">Borrow Limit</div>
-                  <div className="text-lg font-bold font-mono text-white">$0.00</div>
+                  <div className="text-lg font-bold font-mono text-white">${borrowLimit.toFixed(2)}</div>
                 </div>
               </div>
             </div>
@@ -119,10 +167,15 @@ export function LendBorrow() {
                       <TableBody>
                         {lendAssets.map((asset) => (
                           <TableRow key={asset.symbol} className="border-[#222] hover:bg-[#222] transition-colors group">
-                            <TableCell className="font-bold">
+                            <TableCell className="font-bold py-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded bg-[#333] flex items-center justify-center font-mono text-[10px]">{asset.symbol[0]}</div>
-                                <div className="font-mono">{asset.symbol}</div>
+                                <div className="font-mono">
+                                  {asset.symbol}
+                                  {suppliedBalances[asset.symbol] > 0 && (
+                                    <div className="text-[10px] text-green-400 mt-1">Supplied: {suppliedBalances[asset.symbol]}</div>
+                                  )}
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell className="font-mono text-xs text-[#888]">{isLoading ? '...' : asset.balance}</TableCell>
@@ -132,7 +185,7 @@ export function LendBorrow() {
                                 variant="outline" 
                                 size="sm" 
                                 className="border-[#333] hover:bg-white hover:text-black font-mono text-[10px] uppercase h-8"
-                                onClick={() => handleAction('Deposit', asset.symbol)}
+                                onClick={() => openModal('Deposit', asset.symbol)}
                               >
                                 Deposit
                               </Button>
@@ -156,8 +209,8 @@ export function LendBorrow() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 relative z-10">
-                    <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-widest h-10" onClick={() => handleAction('Auto-Deposit', 'USDC')}>
-                      Quick Deposit USDC
+                    <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-widest h-10" onClick={handleQuickDeposit}>
+                      Quick Deposit $100 USDC
                     </Button>
                     <p className="text-[9px] font-mono text-[#666] text-center uppercase">Fixed Arc Gas Fee applies</p>
                   </CardContent>
@@ -175,7 +228,9 @@ export function LendBorrow() {
                       <Activity className="w-4 h-4 text-green-500" />
                     </div>
                     <div className="space-y-1">
-                      <div className="text-3xl font-bold font-mono tracking-tighter">∞</div>
+                      <div className="text-3xl font-bold font-mono tracking-tighter">
+                        {totalBorrowed === 0 ? '∞' : (borrowLimit / totalBorrowed).toFixed(2)}
+                      </div>
                       <p className="text-[10px] font-mono text-[#666] uppercase">Current Health Factor</p>
                     </div>
                   </CardHeader>
@@ -183,9 +238,23 @@ export function LendBorrow() {
                     <div className="p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-lg flex gap-3 italic">
                       <Lock className="w-5 h-5 text-indigo-500 flex-shrink-0" />
                       <p className="text-[10px] text-indigo-400 font-mono leading-tight uppercase">
-                        No active debt. You have {isLoading ? '...' : `${balances.USDC.balance} USDC & ${balances.EURC.balance} EURC`} available. Deposit assets to borrow against them.
+                        {canBorrow 
+                          ? `You have a total borrow limit of $${borrowLimit.toFixed(2)} based on your supplied collateral.`
+                          : `No active debt. You have ${isLoading ? '...' : `${balances.USDC.balance} USDC & ${balances.EURC.balance} EURC`} available in your wallet. Deposit assets to borrow against them.`}
                       </p>
                     </div>
+                    
+                    {totalBorrowed > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-mono">
+                          <span className="text-[#888]">Borrow Power Used</span>
+                          <span className={totalBorrowed > borrowLimit * 0.8 ? 'text-red-400' : 'text-green-400'}>
+                            {((totalBorrowed / borrowLimit) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <Progress value={(totalBorrowed / borrowLimit) * 100} className="h-1 bg-[#333]" />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -207,9 +276,12 @@ export function LendBorrow() {
                       <TableBody>
                         {borrowAssets.map((loan) => (
                           <TableRow key={loan.asset} className="border-[#222] hover:bg-[#222] transition-colors group">
-                            <TableCell className="font-mono py-6">
+                            <TableCell className="font-mono py-4">
                               <div className="text-sm font-bold">{loan.asset}</div>
                               <div className="text-[10px] text-[#666] uppercase">Available: {loan.liquidity}</div>
+                              {borrowedBalances[loan.asset] > 0 && (
+                                <div className="text-[10px] text-red-400 mt-1">Borrowed: {borrowedBalances[loan.asset]}</div>
+                              )}
                             </TableCell>
                             <TableCell className="font-mono text-sm text-red-500">{loan.apy}</TableCell>
                             <TableCell className="text-right">
@@ -217,7 +289,8 @@ export function LendBorrow() {
                                 variant="outline" 
                                 size="sm" 
                                 className="border-[#333] hover:bg-red-500/10 hover:text-red-500 font-mono text-[10px] uppercase h-8"
-                                disabled
+                                disabled={!canBorrow || (totalBorrowed >= borrowLimit)}
+                                onClick={() => openModal('Borrow', loan.asset)}
                               >
                                 Borrow
                               </Button>
@@ -232,11 +305,53 @@ export function LendBorrow() {
             </TabsContent>
           </Tabs>
         )}
+
+        {/* Interaction Modal */}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogContent className="bg-[#1a1a1a] border-[#333] text-white">
+            <DialogHeader>
+              <DialogTitle className="font-mono uppercase tracking-widest">{modalAction} {modalAsset}</DialogTitle>
+              <DialogDescription className="text-[#888]">
+                {modalAction === 'Deposit' 
+                  ? `Enter the amount of ${modalAsset} you want to supply as collateral.`
+                  : `Enter the amount of ${modalAsset} you want to borrow against your collateral.`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={amountInput}
+                onChange={(e) => setAmountInput(e.target.value)}
+                className="bg-[#222] border-[#333] font-mono text-lg"
+              />
+              {modalAction === 'Borrow' && (
+                <p className="text-[10px] text-[#666] font-mono mt-2 text-right">Max borrow limit: ${(borrowLimit - totalBorrowed).toFixed(2)}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                className="border-[#333] hover:bg-[#333]"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className={modalAction === 'Deposit' ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-red-600 hover:bg-red-500'}
+                onClick={handleAction}
+                disabled={!amountInput || isTxPending}
+              >
+                Confirm {modalAction}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </PageWrapper>
   );
 }
-
 
 function assetIcon(asset: string) {
   if (asset === 'USDC') return '🔵';
