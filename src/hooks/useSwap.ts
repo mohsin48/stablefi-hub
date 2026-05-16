@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useAccount, useConnectorClient } from 'wagmi';
 import { BrowserProvider, JsonRpcSigner, Contract, parseUnits } from 'ethers';
 import { toast } from 'sonner';
-import { USDC_ADDRESS, EURC_ADDRESS, STABLEFX_ADDRESS, ERC20_ABI } from '../contracts';
+import { USDC_ADDRESS, EURC_ADDRESS, WUSDC_ADDRESS, ERC20_ABI } from '../contracts';
 
 /**
  * Hook to convert a viem client to an ethers signer.
@@ -59,13 +59,21 @@ export function useSwap() {
     const tokenOutSymbol = direction === 'USDC_TO_EURC' ? 'EURC' : 'USDC';
 
     try {
-      const parsedAmount = parseUnits(amount, 6); // Both USDC and EURC use 6 decimals
+      const isUsdcToEurc = direction === 'USDC_TO_EURC';
+      
+      // Native USDC uses 18 decimals, EURC uses 6 decimals
+      const decimalsIn = isUsdcToEurc ? 18 : 6;
+      const parsedAmount = parseUnits(amount, decimalsIn);
       
       const tokenContract = new Contract(tokenIn, ERC20_ABI, signer);
       const routerContract = new Contract(ROUTER_ADDRESS, SWAP_ABI, signer);
 
       // Step 1: Check balance
-      const balance = await tokenContract.balanceOf(address);
+      // If native USDC, get balance from provider, else from ERC20 contract
+      const balance = isUsdcToEurc 
+        ? await signer.provider.getBalance(address)
+        : await tokenContract.balanceOf(address);
+        
       if (balance < parsedAmount) {
         toast.error('Insufficient Balance', { 
           description: `You don't have enough ${tokenInSymbol}. Get testnet tokens from faucet.circle.com` 
@@ -74,27 +82,29 @@ export function useSwap() {
         return;
       }
 
-      // Step 2: Approve Router contract to spend tokens
-      toast.info(`Step 1/2: Approving ${tokenInSymbol}`, { 
-        description: `Allowing Swap Router to spend your ${tokenInSymbol}...` 
-      });
-      
-      const approveTx = await tokenContract.approve(ROUTER_ADDRESS, parsedAmount);
-      toast.info('Approval Pending', { description: 'Waiting for confirmation on Arc Testnet...' });
-      await approveTx.wait();
-      toast.success('Approval Confirmed ✓');
+      // Step 2: Approve Router contract to spend tokens (only needed for EURC, native USDC is handled via msg.value)
+      if (!isUsdcToEurc) {
+        toast.info(`Step 1/2: Approving ${tokenInSymbol}`, { 
+          description: `Allowing Swap Router to spend your ${tokenInSymbol}...` 
+        });
+        
+        const approveTx = await tokenContract.approve(ROUTER_ADDRESS, parsedAmount);
+        toast.info('Approval Pending', { description: 'Waiting for confirmation on Arc Testnet...' });
+        await approveTx.wait();
+        toast.success('Approval Confirmed ✓');
+      }
 
       // Step 3: Execute swap via Router
-      // Get expected output amount
       let expectedAmountOut = 0n;
-      const path = [tokenIn, tokenOut];
+      // Use WUSDC instead of USDC in the path
+      const path = isUsdcToEurc ? [WUSDC_ADDRESS, EURC_ADDRESS] : [EURC_ADDRESS, WUSDC_ADDRESS];
+      
       try {
         const amountsOut = await routerContract.getAmountsOut(parsedAmount, path);
         expectedAmountOut = amountsOut[1];
       } catch (err: any) {
         console.error('getAmountsOut error:', err);
-        // Provide a clearer error if liquidity does not exist
-        if (err?.message?.includes('missing revert data')) {
+        if (err?.message?.includes('missing revert data') || err?.message?.includes('INSUFFICIENT_LIQUIDITY')) {
            toast.error('Insufficient Liquidity', { description: 'The liquidity pool for this pair does not exist or lacks liquidity on the testnet router.' });
            setIsSwapping(false);
            return;
@@ -107,30 +117,42 @@ export function useSwap() {
       if (expectedAmountOut > 0n) {
           minAmountOut = expectedAmountOut - (expectedAmountOut * slippageBps / 10000n);
       } else {
-          // Fallback if getAmountsOut failed but we want to simulate anyway (e.g. 1:1)
-          minAmountOut = parsedAmount - (parsedAmount * slippageBps / 10000n);
+          // Fallback if getAmountsOut failed
+          const decimalsOut = isUsdcToEurc ? 6 : 18;
+          const fallbackAmountOut = parseUnits(amount, decimalsOut);
+          minAmountOut = fallbackAmountOut - (fallbackAmountOut * slippageBps / 10000n);
       }
 
       const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
-      toast.info(`Step 2/2: Swapping ${tokenInSymbol} → ${tokenOutSymbol}`, { 
+      toast.info(`Step ${isUsdcToEurc ? '1' : '2'}/2: Swapping ${tokenInSymbol} → ${tokenOutSymbol}`, { 
         description: 'Executing swap on Arc Testnet Router...' 
       });
       
       let swapTx;
       try {
-        // Try the Uniswap V2 router swapExactTokensForTokens function
-        swapTx = await routerContract.swapExactTokensForTokens(
-          parsedAmount,
-          minAmountOut,
-          path,
-          address,
-          deadline
-        );
+        if (isUsdcToEurc) {
+          // Native USDC to EURC
+          swapTx = await routerContract.swapExactETHForTokens(
+            minAmountOut,
+            path,
+            address,
+            deadline,
+            { value: parsedAmount }
+          );
+        } else {
+          // EURC to Native USDC
+          swapTx = await routerContract.swapExactTokensForETH(
+            parsedAmount,
+            minAmountOut,
+            path,
+            address,
+            deadline
+          );
+        }
       } catch (swapError: any) {
         console.error('Swap call failed:', swapError);
         
-        // Provide a user-friendly error
         const reason = swapError?.reason || swapError?.message || '';
         if (reason.includes('INSUFFICIENT_OUTPUT_AMOUNT')) {
           toast.error('Slippage Too High', { 
@@ -142,7 +164,7 @@ export function useSwap() {
           });
         } else {
           toast.error('Swap Failed', { 
-            description: `Router contract reverted. The pool may not support this pair yet. Error: ${reason.substring(0, 100)}` 
+            description: `Router contract reverted. Error: ${reason.substring(0, 100)}` 
           });
         }
         setIsSwapping(false);
@@ -166,14 +188,11 @@ export function useSwap() {
     } catch (error: any) {
       console.error('Swap error:', error);
       
-      // Parse ethers.js errors into readable messages
       let message = 'Transaction failed';
       if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
         message = 'Transaction rejected by user';
       } else if (error.code === 'INSUFFICIENT_FUNDS') {
         message = 'Insufficient USDC for gas fees. Get testnet USDC from faucet.circle.com';
-      } else if (error.message?.includes('missing revert data')) {
-        message = 'Contract call reverted. The Router contract may not support this swap path.';
       } else if (error.reason) {
         message = error.reason;
       } else if (error.message) {
