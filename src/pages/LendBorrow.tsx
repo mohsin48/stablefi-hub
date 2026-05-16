@@ -11,7 +11,8 @@ import {
   TrendingDown,
   ArrowUpRight,
   ArrowDownRight,
-  Loader2
+  Loader2,
+  Wallet
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { PageWrapper } from '@/src/components/PageWrapper';
 
@@ -126,253 +127,387 @@ export function LendBorrow() {
 
   return (
     <PageWrapper>
-      <div className="p-8 space-y-8 max-w-[1400px] mx-auto">
-        <header className="flex justify-between items-end">
-          <div className="flex flex-col gap-2">
-            <h2 className="text-3xl font-bold tracking-tight text-white font-sans italic serif">Liquidity Market</h2>
-            <div className="flex items-center gap-4">
-              <p className="text-[#888] font-mono text-xs uppercase italic tracking-widest">Protocol Health: Optimal</p>
-              <div className="flex items-center gap-2 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
-                <ShieldCheck className="w-3 h-3 text-green-500" />
-                <span className="text-[10px] text-green-500 font-mono font-bold uppercase">Audited by Arc Core</span>
+      <div className="p-6 md:p-10 space-y-8 max-w-[1400px] mx-auto min-h-screen">
+        <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-12">
+          <div className="flex flex-col gap-3">
+            <motion.h2 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-4xl font-extrabold tracking-tight text-white"
+            >
+              Liquidity Market
+            </motion.h2>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-center gap-4"
+            >
+              <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 backdrop-blur-sm">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs text-emerald-400 font-medium tracking-wide">Protocol Health: Optimal</span>
               </div>
-            </div>
+            </motion.div>
           </div>
           <ConnectButton />
         </header>
 
-        {!isConnected ? (
-          <div className="py-24 flex flex-col items-center justify-center gap-6 border border-[#333] rounded-2xl bg-[#1a1a1a]/40 border-dashed">
-            <Lock className="w-12 h-12 text-[#222]" />
-            <div className="text-center">
-              <h3 className="text-xl font-bold italic serif">Market Locked</h3>
-              <p className="text-[#666] font-mono text-xs uppercase tracking-widest">Connect wallet to view supply/borrow rates</p>
-            </div>
-            <ConnectButton />
-          </div>
-        ) : (
-          <Tabs defaultValue="lend" className="w-full" onValueChange={setActiveTab}>
-            <div className="flex justify-between items-center mb-6">
-              <TabsList className="bg-[#1a1a1a] border border-[#333] p-1">
-                <TabsTrigger value="lend" className="data-[state=active]:bg-white data-[state=active]:text-black font-mono text-xs uppercase tracking-wider px-8">Lending</TabsTrigger>
-                <TabsTrigger value="borrow" className="data-[state=active]:bg-white data-[state=active]:text-black font-mono text-xs uppercase tracking-wider px-8">Borrowing</TabsTrigger>
-              </TabsList>
-              
-              <div className="flex gap-4">
-                <div className="text-right">
-                  <div className="text-[10px] font-mono text-[#666] uppercase">Supply Balance</div>
-                  <div className="text-lg font-bold font-mono text-indigo-400">${totalSupplied.toFixed(2)}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-mono text-[#666] uppercase">Borrow Limit</div>
-                  <div className="text-lg font-bold font-mono text-white">${borrowLimit.toFixed(2)}</div>
-                </div>
-              </div>
-            </div>
-
-            <TabsContent value="lend" className="space-y-6 mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="md:col-span-2 bg-[#1a1a1a] border-[#333] text-white">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium font-mono uppercase italic text-[#888]">Available Assets to Lend</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader className="border-[#222]">
-                        <TableRow className="hover:bg-transparent border-[#222]">
-                          <TableHead className="font-mono text-[10px] uppercase text-[#444]">Asset</TableHead>
-                          <TableHead className="font-mono text-[10px] uppercase text-[#444]">Wallet Balance</TableHead>
-                          <TableHead className="font-mono text-[10px] uppercase text-[#444]">APY</TableHead>
-                          <TableHead className="font-mono text-[10px] uppercase text-[#444] text-right">Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {lendAssets.map((asset) => (
-                          <TableRow key={asset.symbol} className="border-[#222] hover:bg-[#222] transition-colors group">
-                            <TableCell className="font-bold py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded bg-[#333] flex items-center justify-center font-mono text-[10px]">{asset.symbol[0]}</div>
-                                <div className="font-mono">
-                                  {asset.symbol}
-                                  {suppliedBalances[asset.symbol] > 0 && (
-                                    <div className="text-[10px] text-green-400 mt-1">Supplied: {suppliedBalances[asset.symbol]}</div>
-                                  )}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="font-mono text-xs text-[#888]">{isLoading ? '...' : asset.balance}</TableCell>
-                            <TableCell className="font-mono text-xs text-green-400">{asset.apy}</TableCell>
-                            <TableCell className="text-right">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="border-[#333] hover:bg-white hover:text-black font-mono text-[10px] uppercase h-8"
-                                onClick={() => openModal('Deposit', asset.symbol)}
-                              >
-                                Deposit
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-indigo-900/10 border-indigo-500/20 text-white flex flex-col justify-between overflow-hidden relative">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <Zap className="w-32 h-32 text-indigo-500 rotate-12" />
+        <AnimatePresence mode="wait">
+          {!isConnected ? (
+            <motion.div 
+              key="locked"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="mt-12 max-w-2xl mx-auto"
+            >
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#1E1E1E] to-[#121212] border border-[#2A2A2A] p-12 text-center shadow-2xl">
+                <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:32px]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent" />
+                
+                <div className="relative z-10 flex flex-col items-center gap-6">
+                  <div className="w-20 h-20 rounded-full bg-[#2A2A2A] flex items-center justify-center border border-[#3A3A3A] shadow-inner mb-2">
+                    <Wallet className="w-8 h-8 text-[#888]" />
                   </div>
-                  <CardHeader>
-                    <Badge className="w-fit bg-indigo-500 text-white border-none mb-2 font-mono text-[9px] uppercase tracking-tighter">AI Insight</Badge>
-                    <CardTitle className="text-lg font-bold font-sans italic">Yield Optimizer</CardTitle>
-                    <CardDescription className="text-[#888] text-xs font-mono italic leading-relaxed">
-                      Arc Testnet faucet USDC is currently yielding 4.5% APY. We recommend depositing to earn cross-chain loyalty points.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 relative z-10">
-                    <Button 
-                      className="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold uppercase tracking-widest h-10" 
-                      onClick={handleQuickDeposit}
-                      disabled={isTxPending}
-                    >
-                      {isTxPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Quick Deposit $100 USDC'}
-                    </Button>
-                    <p className="text-[9px] font-mono text-[#666] text-center uppercase">Fixed Arc Gas Fee applies</p>
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-bold text-white tracking-tight">Market Locked</h3>
+                    <p className="text-[#888] text-sm max-w-md mx-auto">
+                      Connect your wallet to access the decentralized money market, view live rates, and manage your liquidity positions.
+                    </p>
+                  </div>
+                  <div className="pt-4">
+                    <ConnectButton />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="market"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-8"
+            >
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <Card className="bg-[#1A1A1A] border-[#2A2A2A] shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="text-sm font-medium text-[#888] mb-1">Total Supplied</div>
+                    <div className="text-3xl font-bold text-white">${totalSupplied.toFixed(2)}</div>
                   </CardContent>
                 </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="borrow" className="space-y-6 mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-[#1a1a1a] border-[#333] text-white overflow-hidden relative">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-green-500/50" />
-                  <CardHeader>
-                    <div className="flex justify-between items-center mb-4">
-                      <CardTitle className="text-xs font-mono uppercase italic text-[#888]">Risk Monitor</CardTitle>
-                      <Activity className="w-4 h-4 text-green-500" />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-3xl font-bold font-mono tracking-tighter">
-                        {totalBorrowed === 0 ? '∞' : (borrowLimit / totalBorrowed).toFixed(2)}
-                      </div>
-                      <p className="text-[10px] font-mono text-[#666] uppercase">Current Health Factor</p>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="p-3 bg-indigo-500/5 border border-indigo-500/20 rounded-lg flex gap-3 italic">
-                      <Lock className="w-5 h-5 text-indigo-500 flex-shrink-0" />
-                      <p className="text-[10px] text-indigo-400 font-mono leading-tight uppercase">
-                        {canBorrow 
-                          ? `You have a total borrow limit of $${borrowLimit.toFixed(2)} based on your supplied collateral.`
-                          : `No active debt. You have ${isLoading ? '...' : `${balances.USDC.balance} USDC & ${balances.EURC.balance} EURC`} available in your wallet. Deposit assets to borrow against them.`}
-                      </p>
-                    </div>
-                    
-                    {totalBorrowed > 0 && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-mono">
-                          <span className="text-[#888]">Borrow Power Used</span>
-                          <span className={totalBorrowed > borrowLimit * 0.8 ? 'text-red-400' : 'text-green-400'}>
-                            {((totalBorrowed / borrowLimit) * 100).toFixed(1)}%
-                          </span>
+                <Card className="bg-[#1A1A1A] border-[#2A2A2A] shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="text-sm font-medium text-[#888] mb-1">Borrow Limit</div>
+                    <div className="text-3xl font-bold text-indigo-400">${borrowLimit.toFixed(2)}</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-[#1A1A1A] border-[#2A2A2A] shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="text-sm font-medium text-[#888] mb-1">Total Borrowed</div>
+                    <div className="text-3xl font-bold text-rose-400">${totalBorrowed.toFixed(2)}</div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-[#1A1A1A] border-[#2A2A2A] shadow-lg relative overflow-hidden">
+                  <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-gradient-to-l from-emerald-500/10 to-transparent" />
+                  <CardContent className="p-6 relative z-10">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="text-sm font-medium text-[#888] mb-1">Health Factor</div>
+                        <div className="text-3xl font-bold text-emerald-400">
+                          {totalBorrowed === 0 ? '∞' : (borrowLimit / totalBorrowed).toFixed(2)}
                         </div>
-                        <Progress value={(totalBorrowed / borrowLimit) * 100} className="h-1 bg-[#333]" />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="md:col-span-2 bg-[#1a1a1a] border-[#333] text-white">
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-sm font-medium font-mono uppercase italic text-[#888]">Borrow Assets</CardTitle>
+                      <Activity className="w-5 h-5 text-emerald-500 opacity-50" />
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader className="border-[#222]">
-                        <TableRow className="hover:bg-transparent border-[#222]">
-                          <TableHead className="font-mono text-[10px] uppercase text-[#444]">Asset</TableHead>
-                          <TableHead className="font-mono text-[10px] uppercase text-[#444]">Variable APY</TableHead>
-                          <TableHead className="font-mono text-[10px] uppercase text-[#444] text-right">Action</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {borrowAssets.map((loan) => (
-                          <TableRow key={loan.asset} className="border-[#222] hover:bg-[#222] transition-colors group">
-                            <TableCell className="font-mono py-4">
-                              <div className="text-sm font-bold">{loan.asset}</div>
-                              <div className="text-[10px] text-[#666] uppercase">Available: {loan.liquidity}</div>
-                              {borrowedBalances[loan.asset] > 0 && (
-                                <div className="text-[10px] text-red-400 mt-1">Borrowed: {borrowedBalances[loan.asset]}</div>
-                              )}
-                            </TableCell>
-                            <TableCell className="font-mono text-sm text-red-500">{loan.apy}</TableCell>
-                            <TableCell className="text-right">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="border-[#333] hover:bg-red-500/10 hover:text-red-500 font-mono text-[10px] uppercase h-8"
-                                disabled={!canBorrow || (totalBorrowed >= borrowLimit)}
-                                onClick={() => openModal('Borrow', loan.asset)}
-                              >
-                                Borrow
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
-          </Tabs>
-        )}
+
+              <Tabs defaultValue="lend" className="w-full" onValueChange={setActiveTab}>
+                <div className="flex justify-start mb-6">
+                  <TabsList className="bg-[#1A1A1A] border border-[#2A2A2A] p-1 rounded-xl">
+                    <TabsTrigger 
+                      value="lend" 
+                      className="rounded-lg data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white data-[state=active]:shadow-sm px-6 py-2 transition-all duration-300"
+                    >
+                      Lending Markets
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="borrow" 
+                      className="rounded-lg data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white data-[state=active]:shadow-sm px-6 py-2 transition-all duration-300"
+                    >
+                      Borrowing Markets
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="lend" className="mt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-2 bg-[#1A1A1A] border-[#2A2A2A] shadow-xl overflow-hidden">
+                      <CardHeader className="bg-[#1E1E1E] border-b border-[#2A2A2A] px-6 py-4">
+                        <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
+                          <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+                          Assets to Supply
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="border-[#2A2A2A] hover:bg-transparent">
+                              <TableHead className="text-[#888] font-medium px-6 py-4">Asset</TableHead>
+                              <TableHead className="text-[#888] font-medium px-6">Wallet Balance</TableHead>
+                              <TableHead className="text-[#888] font-medium px-6">Supply APY</TableHead>
+                              <TableHead className="text-right px-6"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {lendAssets.map((asset, i) => (
+                              <motion.tr 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                key={asset.symbol} 
+                                className="border-[#2A2A2A] hover:bg-[#222222] transition-colors group"
+                              >
+                                <TableCell className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-[#2A2A2A] flex items-center justify-center font-bold text-sm shadow-inner border border-[#333]">
+                                      {asset.symbol[0]}
+                                    </div>
+                                    <div>
+                                      <div className="font-semibold text-white">{asset.symbol}</div>
+                                      {suppliedBalances[asset.symbol] > 0 && (
+                                        <div className="text-xs text-emerald-400 mt-0.5 flex items-center gap-1">
+                                          Supplied: {suppliedBalances[asset.symbol].toFixed(2)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="px-6 text-[#BBB] font-medium">
+                                  {isLoading ? '...' : asset.balance}
+                                </TableCell>
+                                <TableCell className="px-6">
+                                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 font-semibold">
+                                    {asset.apy}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right px-6">
+                                  <Button 
+                                    className="bg-white text-black hover:bg-gray-200 font-semibold px-6 shadow-sm transition-transform active:scale-95"
+                                    onClick={() => openModal('Deposit', asset.symbol)}
+                                  >
+                                    Supply
+                                  </Button>
+                                </TableCell>
+                              </motion.tr>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gradient-to-br from-indigo-900/40 to-[#1A1A1A] border-indigo-500/30 text-white overflow-hidden relative shadow-xl">
+                      <div className="absolute top-0 right-0 p-6 opacity-20 transform translate-x-4 -translate-y-4">
+                        <Zap className="w-48 h-48 text-indigo-400" />
+                      </div>
+                      <CardHeader className="relative z-10">
+                        <Badge className="w-fit bg-indigo-500 hover:bg-indigo-600 text-white border-none mb-4 tracking-wide shadow-md">
+                          Yield Optimizer
+                        </Badge>
+                        <CardTitle className="text-xl font-bold leading-tight">Maximize your returns on Arc Testnet</CardTitle>
+                        <CardDescription className="text-indigo-200/70 mt-2 text-sm leading-relaxed">
+                          USDC is currently yielding {lendAssets[0].apy} APY. Deposit with one click to start earning yield and loyalty points.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="relative z-10 pt-4">
+                        <Button 
+                          className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-6 shadow-lg shadow-indigo-500/20 transition-all hover:shadow-indigo-500/40 active:scale-[0.98]" 
+                          onClick={handleQuickDeposit}
+                          disabled={isTxPending}
+                        >
+                          {isTxPending ? <Loader2 className="w-5 h-5 animate-spin" /> : '1-Click Deposit $100 USDC'}
+                        </Button>
+                        <p className="text-xs text-indigo-300/50 text-center mt-4 flex items-center justify-center gap-1">
+                          <Info className="w-3 h-3" /> Standard Arc gas fees apply
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="borrow" className="mt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-2 bg-[#1A1A1A] border-[#2A2A2A] shadow-xl overflow-hidden">
+                      <CardHeader className="bg-[#1E1E1E] border-b border-[#2A2A2A] px-6 py-4">
+                        <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
+                          <ArrowDownRight className="w-4 h-4 text-rose-500" />
+                          Assets to Borrow
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="border-[#2A2A2A] hover:bg-transparent">
+                              <TableHead className="text-[#888] font-medium px-6 py-4">Asset</TableHead>
+                              <TableHead className="text-[#888] font-medium px-6">Available Liquidity</TableHead>
+                              <TableHead className="text-[#888] font-medium px-6">Borrow APY</TableHead>
+                              <TableHead className="text-right px-6"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {borrowAssets.map((loan, i) => (
+                              <motion.tr 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                key={loan.asset} 
+                                className="border-[#2A2A2A] hover:bg-[#222222] transition-colors group"
+                              >
+                                <TableCell className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-[#2A2A2A] flex items-center justify-center font-bold text-sm shadow-inner border border-[#333]">
+                                      {loan.asset[0]}
+                                    </div>
+                                    <div>
+                                      <div className="font-semibold text-white">{loan.asset}</div>
+                                      {borrowedBalances[loan.asset] > 0 && (
+                                        <div className="text-xs text-rose-400 mt-0.5">
+                                          Borrowed: {borrowedBalances[loan.asset].toFixed(2)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="px-6 text-[#BBB] font-medium">
+                                  {loan.liquidity}
+                                </TableCell>
+                                <TableCell className="px-6">
+                                  <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20 font-semibold">
+                                    {loan.apy}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right px-6">
+                                  <Button 
+                                    variant="outline"
+                                    className="border-[#333] hover:bg-rose-500 hover:text-white hover:border-rose-500 font-semibold px-6 transition-all active:scale-95"
+                                    disabled={!canBorrow || (totalBorrowed >= borrowLimit)}
+                                    onClick={() => openModal('Borrow', loan.asset)}
+                                  >
+                                    Borrow
+                                  </Button>
+                                </TableCell>
+                              </motion.tr>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-[#1A1A1A] border-[#2A2A2A] shadow-xl overflow-hidden relative">
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-yellow-400 to-rose-400 opacity-50" />
+                      <CardHeader>
+                        <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
+                          <Activity className="w-5 h-5 text-[#888]" />
+                          Position Risk
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="p-4 bg-[#222] border border-[#333] rounded-xl flex gap-3">
+                          <Info className="w-5 h-5 text-[#888] flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-[#BBB] leading-relaxed">
+                            {canBorrow 
+                              ? `You can borrow up to $${borrowLimit.toFixed(2)} against your supplied collateral.`
+                              : `No collateral supplied. You have ${isLoading ? '...' : `${balances.USDC.balance} USDC`} available. Supply assets to unlock borrowing.`}
+                          </p>
+                        </div>
+                        
+                        {totalBorrowed > 0 && (
+                          <div className="space-y-3 p-4 bg-[#1E1E1E] rounded-xl border border-[#2A2A2A]">
+                            <div className="flex justify-between text-sm font-medium">
+                              <span className="text-[#888]">Borrow Capacity Used</span>
+                              <span className={totalBorrowed > borrowLimit * 0.8 ? 'text-rose-400' : 'text-emerald-400'}>
+                                {((totalBorrowed / borrowLimit) * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                            <Progress 
+                              value={(totalBorrowed / borrowLimit) * 100} 
+                              className={cn("h-2", totalBorrowed > borrowLimit * 0.8 ? "bg-rose-500/20" : "bg-emerald-500/20")} 
+                            />
+                            <div className="flex justify-between text-xs text-[#666]">
+                              <span>$0</span>
+                              <span>${borrowLimit.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Interaction Modal */}
         <Dialog open={isModalOpen} onOpenChange={(open) => {
           if (!isTxPending) setIsModalOpen(open);
         }}>
-          <DialogContent className="bg-[#1a1a1a] border-[#333] text-white">
-            <DialogHeader>
-              <DialogTitle className="font-mono uppercase tracking-widest">{modalAction} {modalAsset}</DialogTitle>
-              <DialogDescription className="text-[#888]">
+          <DialogContent className="bg-[#1A1A1A] border-[#2A2A2A] text-white shadow-2xl sm:max-w-md">
+            <DialogHeader className="space-y-3">
+              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                {modalAction === 'Deposit' ? <ArrowUpRight className="w-6 h-6 text-emerald-400" /> : <ArrowDownRight className="w-6 h-6 text-rose-400" />}
+                {modalAction} {modalAsset}
+              </DialogTitle>
+              <DialogDescription className="text-[#888] text-base">
                 {modalAction === 'Deposit' 
-                  ? `Enter the amount of ${modalAsset} you want to supply as collateral.`
-                  : `Enter the amount of ${modalAsset} you want to borrow against your collateral.`}
+                  ? `Supply ${modalAsset} to earn yield and use it as collateral for borrowing.`
+                  : `Borrow ${modalAsset} against your existing collateral. Maintain a healthy borrow limit.`}
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={amountInput}
-                onChange={(e) => setAmountInput(e.target.value)}
-                className="bg-[#222] border-[#333] font-mono text-lg"
-                disabled={isTxPending}
-              />
+            <div className="py-6 space-y-4">
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={amountInput}
+                  onChange={(e) => setAmountInput(e.target.value)}
+                  className="bg-[#222] border-[#333] text-2xl h-16 pl-4 pr-20 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all"
+                  disabled={isTxPending}
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 font-semibold text-[#888]">
+                  {modalAsset}
+                </div>
+              </div>
+              
               {modalAction === 'Borrow' && (
-                <p className="text-[10px] text-[#666] font-mono mt-2 text-right">Max borrow limit: ${(borrowLimit - totalBorrowed).toFixed(2)}</p>
+                <div className="flex justify-between items-center text-sm px-1">
+                  <span className="text-[#888]">Max Available</span>
+                  <span className="font-semibold text-white">${(borrowLimit - totalBorrowed).toFixed(2)}</span>
+                </div>
               )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button 
-                variant="outline" 
-                className="border-[#333] hover:bg-[#333]"
+                variant="ghost" 
+                className="hover:bg-[#2A2A2A] hover:text-white text-[#888]"
                 onClick={() => setIsModalOpen(false)}
                 disabled={isTxPending}
               >
                 Cancel
               </Button>
               <Button 
-                className={modalAction === 'Deposit' ? 'bg-indigo-600 hover:bg-indigo-500 flex gap-2' : 'bg-red-600 hover:bg-red-500 flex gap-2'}
+                className={cn(
+                  "font-semibold min-w-[120px]",
+                  modalAction === 'Deposit' 
+                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white' 
+                    : 'bg-rose-500 hover:bg-rose-600 text-white'
+                )}
                 onClick={handleAction}
-                disabled={!amountInput || isTxPending}
+                disabled={!amountInput || isTxPending || Number(amountInput) <= 0 || (modalAction === 'Borrow' && Number(amountInput) > (borrowLimit - totalBorrowed))}
               >
-                {isTxPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isTxPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 {isTxPending ? 'Processing...' : `Confirm ${modalAction}`}
               </Button>
             </DialogFooter>
@@ -382,10 +517,4 @@ export function LendBorrow() {
       </div>
     </PageWrapper>
   );
-}
-
-function assetIcon(asset: string) {
-  if (asset === 'USDC') return '🔵';
-  if (asset === 'EURC') return '🟡';
-  return '⚪';
 }
