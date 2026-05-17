@@ -133,7 +133,7 @@ export function LendBorrow() {
             <motion.h2 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl font-extrabold tracking-tight text-white"
+              className="text-3xl md:text-4xl font-extrabold tracking-tight text-white"
             >
               Liquidity Market
             </motion.h2>
@@ -251,8 +251,8 @@ export function LendBorrow() {
                           Assets to Supply
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="p-0">
-                        <Table>
+                      <CardContent className="p-0 overflow-x-auto">
+                        <Table className="min-w-[600px]">
                           <TableHeader>
                             <TableRow className="border-[#2A2A2A] hover:bg-transparent">
                               <TableHead className="text-[#888] font-medium px-6 py-4">Asset</TableHead>
@@ -346,8 +346,8 @@ export function LendBorrow() {
                           Assets to Borrow
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="p-0">
-                        <Table>
+                      <CardContent className="p-0 overflow-x-auto">
+                        <Table className="min-w-[600px]">
                           <TableHeader>
                             <TableRow className="border-[#2A2A2A] hover:bg-transparent">
                               <TableHead className="text-[#888] font-medium px-6 py-4">Asset</TableHead>

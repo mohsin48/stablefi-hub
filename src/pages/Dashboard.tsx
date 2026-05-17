@@ -50,13 +50,13 @@ export function Dashboard() {
 
   return (
     <PageWrapper>
-      <div className="p-8 space-y-8 max-w-[1400px] mx-auto">
-        <header className="flex justify-between items-end">
+      <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-[1400px] mx-auto">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white mb-2 font-sans italic serif">Dashboard</h2>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white mb-2 font-sans italic serif">Dashboard</h2>
             <p className="text-[#888] font-mono text-xs uppercase italic tracking-widest">Global Portfolio Command Center</p>
           </div>
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-3 items-center w-full md:w-auto">
             <Button variant="outline" className="h-10 border-[#333] hover:bg-[#222] text-white hidden md:flex">
               <History className="w-4 h-4 mr-2" />
               Activity
@@ -69,7 +69,7 @@ export function Dashboard() {
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-12 border-2 border-dashed border-[#333] rounded-2xl flex flex-col items-center justify-center text-center gap-6 bg-[#1a1a1a]/50"
+            className="p-6 md:p-12 border-2 border-dashed border-[#333] rounded-2xl flex flex-col items-center justify-center text-center gap-6 bg-[#1a1a1a]/50"
           >
             <div className="w-16 h-16 bg-[#222] rounded-full flex items-center justify-center">
               <Wallet className="w-8 h-8 text-[#444]" />
@@ -125,7 +125,7 @@ export function Dashboard() {
             <CardHeader>
               <CardTitle className="text-sm font-medium font-mono uppercase italic text-[#888]">Portfolio Performance</CardTitle>
             </CardHeader>
-            <CardContent className="h-[300px]">
+            <CardContent className="h-[250px] md:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data}>
                   <defs>

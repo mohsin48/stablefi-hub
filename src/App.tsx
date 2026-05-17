@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
+import { MobileHeader } from './components/MobileHeader';
 import { Dashboard } from './pages/Dashboard';
 import { Swap } from './pages/Swap';
 import { LendBorrow } from './pages/LendBorrow';
@@ -12,7 +13,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <TooltipProvider>
-        <div className="flex bg-[#141414] min-h-screen text-white font-sans selection:bg-white selection:text-black">
+        <div className="flex flex-col md:flex-row bg-[#141414] min-h-screen text-white font-sans selection:bg-white selection:text-black">
+          <MobileHeader />
           <Sidebar />
           <main className="flex-1 h-screen overflow-y-auto overflow-x-hidden selection:bg-white selection:text-black">
             <Routes>

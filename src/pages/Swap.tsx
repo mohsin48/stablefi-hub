@@ -55,7 +55,7 @@ export function Swap() {
 
   return (
     <PageWrapper>
-      <div className="p-8 flex items-center justify-center min-h-[calc(100vh-64px)] bg-[#141414]">
+      <div className="p-4 md:p-8 flex items-center justify-center min-h-[calc(100vh-64px)] bg-[#141414]">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}

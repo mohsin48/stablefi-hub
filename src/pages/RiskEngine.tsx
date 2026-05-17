@@ -59,10 +59,10 @@ export function RiskEngine() {
 
   return (
     <PageWrapper>
-      <div className="p-8 space-y-8 max-w-[1400px] mx-auto min-h-screen bg-[#141414]">
-        <header className="flex justify-between items-end">
+      <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-[1400px] mx-auto min-h-screen bg-[#141414]">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white mb-2 font-sans italic serif flex items-center gap-3">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white mb-2 font-sans italic serif flex items-center gap-3">
               <BrainCircuit className="w-8 h-8 text-indigo-500" />
               AI Risk Sentinel
             </h2>
@@ -228,9 +228,9 @@ export function RiskEngine() {
         </div>
         
         {/* Footer Alert */}
-        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <AlertOctagon className="w-10 h-10 text-indigo-400" />
+        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full">
+            <AlertOctagon className="w-10 h-10 text-indigo-400 shrink-0" />
             <div className="space-y-1">
               <h4 className="text-sm font-bold text-white uppercase italic">Protocol Level Liquidation Guard</h4>
               <p className="text-[11px] text-[#888] font-mono leading-tight max-w-md">
@@ -238,7 +238,7 @@ export function RiskEngine() {
               </p>
             </div>
           </div>
-          <Button variant="outline" className="border-indigo-500/40 text-indigo-400 hover:bg-indigo-500 hover:text-white font-mono text-xs uppercase tracking-widest">
+          <Button variant="outline" className="w-full lg:w-auto border-indigo-500/40 text-indigo-400 hover:bg-indigo-500 hover:text-white font-mono text-xs uppercase tracking-widest shrink-0">
             Configure Safeguards
           </Button>
         </div>

@@ -26,7 +26,7 @@ export function Sidebar() {
   const { isConnected, address } = useAccount();
 
   return (
-    <div className="w-64 h-screen bg-[#141414] text-white flex flex-col border-r border-[#333]">
+    <div className="hidden md:flex w-64 h-screen bg-[#141414] text-white flex-col border-r border-[#333]">
       <div className="p-6 flex items-center gap-3">
         <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
           <TrendingUp className="text-black w-5 h-5" />

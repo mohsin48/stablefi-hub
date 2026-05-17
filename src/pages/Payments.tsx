@@ -36,10 +36,10 @@ export function Payments() {
 
   return (
     <PageWrapper>
-      <div className="p-8 space-y-8 max-w-[1400px] mx-auto">
+      <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-[1400px] mx-auto">
         <header className="flex justify-between items-end">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white mb-2 font-sans italic serif">Global Pay</h2>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white mb-2 font-sans italic serif">Global Pay</h2>
             <p className="text-[#888] font-mono text-xs uppercase italic tracking-widest">Cross-border Stable Settlement</p>
           </div>
           <ConnectButton />
