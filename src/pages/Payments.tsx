@@ -24,6 +24,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useWallet } from '@/src/hooks/useWallet';
 import { useTokenBalances } from '@/src/hooks/useTokenBalances';
+import { usePayment } from '@/src/hooks/usePayment';
+import { useEffect } from 'react';
 
 export function Payments() {
   const { isConnected } = useWallet();
@@ -31,6 +33,15 @@ export function Payments() {
   const [recipient, setRecipient] = useState('');
   const [currency, setCurrency] = useState('USDC');
   const [amount, setAmount] = useState('');
+  
+  const { handlePayment, isPending, isSuccess } = usePayment();
+
+  useEffect(() => {
+    if (isSuccess) {
+      setAmount('');
+      setRecipient('');
+    }
+  }, [isSuccess]);
 
   const currentBalance = balances[currency]?.balance || '0.00';
 
@@ -117,8 +128,12 @@ export function Payments() {
                   </div>
                 </div>
 
-                <Button className="w-full h-14 bg-white text-black hover:bg-gray-200 text-sm font-bold uppercase tracking-[0.2em] rounded-xl">
-                  Execute Remittance
+                <Button 
+                  className="w-full h-14 bg-white text-black hover:bg-gray-200 text-sm font-bold uppercase tracking-[0.2em] rounded-xl"
+                  onClick={() => handlePayment(recipient, amount, currency)}
+                  disabled={!amount || !recipient || isPending || isNaN(Number(amount))}
+                >
+                  {isPending ? 'Processing...' : 'Execute Remittance'}
                 </Button>
                 
                 <p className="text-center text-[10px] font-mono text-[#444] italic uppercase">
